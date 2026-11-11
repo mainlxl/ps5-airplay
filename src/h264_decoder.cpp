@@ -279,6 +279,13 @@ static void *presenter_thread(void *)
         }
         if (g_video_ready) {
             const double started = now_ms();
+            // AirPlay mirroring is BT.709 limited range; only override when the
+            // bitstream explicitly says otherwise (full range / SD matrices).
+            const int full_range = (g_frame->color_range == AVCOL_RANGE_JPEG) ||
+                                   (g_frame->format == AV_PIX_FMT_YUVJ420P);
+            const int bt709 = (g_frame->colorspace != AVCOL_SPC_BT470BG) &&
+                              (g_frame->colorspace != AVCOL_SPC_SMPTE170M);
+            ps5_video_set_colour(full_range, bt709);
             (void)ps5_video_present_i420(frame->data[0], frame->linesize[0],
                                          frame->data[1], frame->linesize[1],
                                          frame->data[2], frame->linesize[2],

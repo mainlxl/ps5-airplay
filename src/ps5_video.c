@@ -1,4 +1,4 @@
-#include "ps5_video.h"
+﻿#include "ps5_video.h"
 #include "receiver_log.h"
 #include "ps5_sce.h"
 
@@ -223,22 +223,45 @@ static int build_maps(int src_width, int src_height)
 
 static int y_term[256], r_v_term[256], g_u_term[256], g_v_term[256], b_u_term[256];
 static uint8_t clip_table[2048];
-static int tables_ready;
+static int tables_key = -1;
+static int g_full_range;
+static int g_bt709 = 1;
+
+/* AirPlay mirroring is HD BT.709 limited range; the previous fixed BT.601
+ * tables gave the wrong hue (greens/yellows especially) and could not handle
+ * full-range (JPEG) sources at all. */
+void ps5_video_set_colour(int full_range, int bt709)
+{
+    g_full_range = full_range ? 1 : 0;
+    g_bt709 = bt709 ? 1 : 0;
+}
 
 static void init_tables(void)
 {
-    if (tables_ready)
+    const int key = (g_full_range << 1) | g_bt709;
+    if (tables_key == key)
         return;
     for (int i = 0; i < 256; i++) {
-        y_term[i] = 298 * (i - 16);
-        r_v_term[i] = 409 * (i - 128);
-        g_u_term[i] = -100 * (i - 128);
-        g_v_term[i] = -208 * (i - 128);
-        b_u_term[i] = 516 * (i - 128);
+        const int cv = i - 128;
+        int rv, gu, gv, bu;
+        /* Q8 coefficients. Full range uses the same chroma gains for both
+         * matrices (1.402 / 0.344 / 0.714 / 1.772). */
+        if (g_full_range) {
+            rv = 359; gu = -88; gv = -183; bu = 454;
+        } else if (g_bt709) {
+            rv = 459; gu = -55; gv = -136; bu = 541;
+        } else {
+            rv = 409; gu = -100; gv = -208; bu = 516;
+        }
+        y_term[i] = (g_full_range ? 256 : 298) * (g_full_range ? i : i - 16);
+        r_v_term[i] = rv * cv;
+        g_u_term[i] = gu * cv;
+        g_v_term[i] = gv * cv;
+        b_u_term[i] = bu * cv;
     }
     for (int v = -1024; v < 1024; v++)
         clip_table[v + 1024] = clamp8(v);
-    tables_ready = 1;
+    tables_key = key;
 }
 
 int ps5_video_present_i420(const uint8_t *y, int y_stride,
@@ -336,3 +359,4 @@ void ps5_video_cleanup(void)
     s_map_dst_w = s_map_dst_h = s_map_src_w = s_map_src_h = -1;
     s_flip_pending = 0;
 }
+

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <stdint.h>
 
@@ -11,6 +11,7 @@ int  ps5_video_init(int width, int height);
 void ps5_video_get_size(int *width, int *height);
 
 int  ps5_video_present(const uint32_t *abgr_linear);
+void ps5_video_set_colour(int full_range, int bt709);
 
 int ps5_video_present_i420(const uint8_t *y, int y_stride,
                            const uint8_t *u, int u_stride,
@@ -24,3 +25,4 @@ void ps5_video_cleanup(void);
 #ifdef __cplusplus
 }
 #endif
+
