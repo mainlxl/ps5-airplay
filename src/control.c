@@ -3,6 +3,7 @@
 #include "receiver_log.h"
 
 #include "airplay_config.h"
+#include "ps5_sce.h"
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -168,9 +169,22 @@ static void copy_bounded(char *out, size_t out_size, const char *value) {
     snprintf(out, out_size, "%s", value);
 }
 
+/* Default advertised name: "PS5-<PSN user>", falling back to "PS5". */
+static void default_receiver_name(char *out, size_t size) {
+    char user[64];
+    uint32_t user_id = 0;
+    user[0] = '\0';
+    if (sceUserServiceGetForegroundUser(&user_id) == 0 &&
+        sceUserServiceGetUserName((int)user_id, user, sizeof(user)) == 0 && user[0]) {
+        snprintf(out, size, "PS5-%s", user);
+    } else {
+        snprintf(out, size, "PS5");
+    }
+}
+
 void airplay_settings_defaults(airplay_settings_t *settings) {
     memset(settings, 0, sizeof(*settings));
-    copy_bounded(settings->name, sizeof(settings->name), AIRPLAY_NAME);
+    default_receiver_name(settings->name, sizeof(settings->name));
     copy_bounded(settings->mode, sizeof(settings->mode), AIRPLAY_MODE_DEFAULT);
     settings->enabled = 1;
 }

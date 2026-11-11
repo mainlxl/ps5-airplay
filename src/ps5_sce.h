@@ -52,6 +52,7 @@ int sceKernelDeleteEqueue(struct kevent *eq);
 int sceUserServiceInitialize(const void *params);
 int sceUserServiceTerminate(void);
 int sceUserServiceGetInitialUser(int *userId);
+int sceUserServiceGetUserName(int userId, char *name, size_t size);
 
 int sceSystemServiceHideSplashScreen(void);
 

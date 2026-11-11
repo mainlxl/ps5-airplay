@@ -7,6 +7,7 @@
 #include "airplay_playout.h"
 #include "display_carrier.h"
 #include "mdns.h"
+#include "ps5_sce.h"
 #include "ps5_video.h"
 #include "rtsp.h"
 #include "update_check.h"
@@ -109,6 +110,8 @@ int main(void) {
     receiver_install_crash_logger();
     setvbuf(stdout, NULL, _IOLBF, 0);
     set_process_name();
+    /* Needed before the default receiver name is derived from the PSN user. */
+    (void)sceUserServiceInitialize(NULL);
     signal(SIGINT, stop_handler);
     signal(SIGTERM, stop_handler);
     signal(SIGHUP, stop_handler);

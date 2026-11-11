@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" manifest="/cache.appcache">
+<html lang="zh-CN" manifest="/cache.appcache">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -237,24 +237,24 @@
       </section>
 
       <section class="settings" aria-label="AirPlay settings">
-        <p class="section-label">AIRPLAY</p>
+        <p class="section-label">投屏</p>
         <div class="rows">
           <div class="row primary">
-            <span class="row-label">AirPlay</span>
+            <span class="row-label">投屏</span>
             <button id="enabled-switch" class="switch on" type="button" aria-label="Toggle AirPlay" aria-pressed="true"></button>
           </div>
         </div>
 
-        <p class="section-label">RECEIVER</p>
+        <p class="section-label">接收器</p>
         <div class="rows">
           <button class="row action" id="name-row" type="button">
-            <span class="row-label">Name</span><span id="name-value" class="value">#NODISCNOBUY</span><span class="chevron">›</span>
+            <span class="row-label">名称</span><span id="name-value" class="value">#NODISCNOBUY</span><span class="chevron">›</span>
           </button>
           <button class="row action" id="passcode-row" type="button">
-            <span class="row-label">Passcode</span><span id="passcode-value" class="value">Off</span><span class="chevron">›</span>
+            <span class="row-label">密码</span><span id="passcode-value" class="value">关闭</span><span class="chevron">›</span>
           </button>
           <button class="row action" id="mode-row" type="button">
-            <span class="row-label">Mode</span><span id="mode-value" class="value">Balanced</span><span class="chevron">›</span>
+            <span class="row-label">模式</span><span id="mode-value" class="value">均衡</span><span class="chevron">›</span>
           </button>
         </div>
         <p id="status-line" class="status-line">Checking AirPlay receiver…</p>
@@ -263,55 +263,55 @@
 
     <footer>
       <span id="footer-version">PS5 AirPlay</span>
-      <span id="footer-status">Starting local receiver</span>
+      <span id="footer-status">正在启动接收器</span>
     </footer>
   </div>
 
   <div id="name-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="name-title">
     <div class="dialog">
-      <h2 id="name-title">Name</h2>
+      <h2 id="name-title">名称</h2>
       <p>This is the name shown in iPhone Screen Mirroring.</p>
       <input id="name-input" maxlength="48" autocomplete="off" spellcheck="false">
       <div class="dialog-actions">
-        <button id="cancel-name" type="button">Cancel</button>
-        <button id="save-name" class="save" type="button">Save</button>
+        <button id="cancel-name" type="button">取消</button>
+        <button id="save-name" class="save" type="button">保存</button>
       </div>
     </div>
   </div>
 
   <div id="passcode-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="passcode-title">
     <div class="dialog">
-      <h2 id="passcode-title">Passcode</h2>
+      <h2 id="passcode-title">密码</h2>
       <p>Four digits. A device is asked for it the first time it connects.</p>
       <input id="passcode-input" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
       <div class="dialog-actions">
-        <button id="cancel-passcode" type="button">Cancel</button>
-        <button id="off-passcode" type="button">Turn Off</button>
-        <button id="save-passcode" class="save" type="button">Save</button>
+        <button id="cancel-passcode" type="button">取消</button>
+        <button id="off-passcode" type="button">关闭</button>
+        <button id="save-passcode" class="save" type="button">保存</button>
       </div>
     </div>
   </div>
 
   <div id="mode-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="mode-title">
     <div class="dialog">
-      <h2 id="mode-title">Mode</h2>
+      <h2 id="mode-title">模式</h2>
       <p>How far behind your device the picture and sound are played. More delay hides Wi-Fi hiccups; less delay feels more immediate.</p>
       <div class="options">
         <button class="option" type="button" data-mode="quality">
-          <strong>Quality</strong>
+          <strong>画质优先</strong>
           <span>Smoothest picture and sound. About 0.2 s behind your device. Best for watching video.</span>
         </button>
         <button class="option" type="button" data-mode="balanced">
-          <strong>Balanced</strong>
+          <strong>均衡</strong>
           <span>About 0.12 s behind. Smooth on a good Wi-Fi, with an occasional short gap in the sound.</span>
         </button>
         <button class="option" type="button" data-mode="performance">
-          <strong>Performance</strong>
+          <strong>低延迟</strong>
           <span>Least delay, about 0.06 s. Best for menus and presenting; may stutter when the Wi-Fi is busy.</span>
         </button>
       </div>
       <div class="dialog-actions">
-        <button id="cancel-mode" type="button">Cancel</button>
+        <button id="cancel-mode" type="button">取消</button>
       </div>
     </div>
   </div>
@@ -322,7 +322,7 @@
     var CONTROL = 'http://127.0.0.1:18182';
     var ELFLDR = 'http://127.0.0.1:9021/?uri=' + encodeURIComponent('file:/data/ps5-airplay/ps5airplay.elf');
     var state = { name: '#NODISCNOBUY', enabled: true, passcodeSet: false, mode: 'balanced' };
-    var MODE_NAMES = { quality: 'Quality', balanced: 'Balanced', performance: 'Performance' };
+    var MODE_NAMES = { quality: '画质优先', balanced: '均衡', performance: '低延迟' };
     var enabledSwitch = document.getElementById('enabled-switch');
     var nameValue = document.getElementById('name-value');
     var passcodeValue = document.getElementById('passcode-value');
