@@ -1,4 +1,4 @@
-﻿#include "ps5_video.h"
+#include "ps5_video.h"
 #include "receiver_log.h"
 #include "ps5_sce.h"
 
@@ -30,6 +30,10 @@ static int64_t       s_frame_id;
 static int           s_flip_pending;
 static int          *s_map_x;
 static int          *s_map_y;
+static int          *s_map_x1;
+static int          *s_map_y1;
+static int          *s_map_wx;
+static int          *s_map_wy;
 static int           s_map_dst_w = -1, s_map_dst_h = -1;
 static int           s_map_src_w = -1, s_map_src_h = -1;
 static uint32_t      *s_linear;
@@ -185,13 +189,21 @@ static int build_maps(int src_width, int src_height)
         s_map_src_w == src_width && s_map_src_h == src_height)
         return 0;
     int *map_x = realloc(s_map_x, sizeof(int) * (size_t)s_width);
-    if (!map_x)
+    int *map_x1 = realloc(s_map_x1, sizeof(int) * (size_t)s_width);
+    int *map_wx = realloc(s_map_wx, sizeof(int) * (size_t)s_width);
+    if (!map_x || !map_x1 || !map_wx)
         return -1;
     s_map_x = map_x;
+    s_map_x1 = map_x1;
+    s_map_wx = map_wx;
     int *map_y = realloc(s_map_y, sizeof(int) * (size_t)s_height);
-    if (!map_y)
+    int *map_y1 = realloc(s_map_y1, sizeof(int) * (size_t)s_height);
+    int *map_wy = realloc(s_map_wy, sizeof(int) * (size_t)s_height);
+    if (!map_y || !map_y1 || !map_wy)
         return -1;
     s_map_y = map_y;
+    s_map_y1 = map_y1;
+    s_map_wy = map_wy;
 
     int dest_w, dest_h;
     if ((long long)src_width * s_height <= (long long)src_height * s_width) {
@@ -205,14 +217,32 @@ static int build_maps(int src_width, int src_height)
     if (dest_h < 1) dest_h = 1;
     const int dest_x = (s_width - dest_w) / 2;
     const int dest_y = (s_height - dest_h) / 2;
-    for (int dx = 0; dx < s_width; dx++)
-        map_x[dx] = (dx < dest_x || dx >= dest_x + dest_w)
-                        ? -1
-                        : ((dx - dest_x) * src_width) / dest_w;
-    for (int dy = 0; dy < s_height; dy++)
-        map_y[dy] = (dy < dest_y || dy >= dest_y + dest_h)
-                        ? -1
-                        : ((dy - dest_y) * src_height) / dest_h;
+    for (int dx = 0; dx < s_width; dx++) {
+        if (dx < dest_x || dx >= dest_x + dest_w) {
+            map_x[dx] = -1;
+            map_x1[dx] = -1;
+            map_wx[dx] = 0;
+            continue;
+        }
+        const int scaled = (dx - dest_x) * src_width;
+        const int qx = scaled / dest_w;
+        map_x[dx] = qx;
+        map_x1[dx] = qx + 1 < src_width ? qx + 1 : src_width - 1;
+        map_wx[dx] = (scaled % dest_w) * 256 / dest_w;
+    }
+    for (int dy = 0; dy < s_height; dy++) {
+        if (dy < dest_y || dy >= dest_y + dest_h) {
+            map_y[dy] = -1;
+            map_y1[dy] = -1;
+            map_wy[dy] = 0;
+            continue;
+        }
+        const int scaled = (dy - dest_y) * src_height;
+        const int qy = scaled / dest_h;
+        map_y[dy] = qy;
+        map_y1[dy] = qy + 1 < src_height ? qy + 1 : src_height - 1;
+        map_wy[dy] = (scaled % dest_h) * 256 / dest_h;
+    }
 
     s_map_dst_w = s_width;
     s_map_dst_h = s_height;
@@ -286,9 +316,14 @@ int ps5_video_present_i420(const uint8_t *y, int y_stride,
                 break;
             const int sy = s_map_y[dy];
             const uint16_t *trow = PS5_tilemap[ly];
+            const int sy1 = s_map_y1[dy];
+            const int wy = s_map_wy[dy];
             const uint8_t *yrow = sy < 0 ? NULL : y + (size_t)sy * y_stride;
             const uint8_t *urow = sy < 0 ? NULL : u + (size_t)(sy / 2) * u_stride;
             const uint8_t *vrow = sy < 0 ? NULL : v + (size_t)(sy / 2) * v_stride;
+            const uint8_t *yrow1 = sy < 0 ? NULL : y + (size_t)sy1 * y_stride;
+            const uint8_t *urow1 = sy < 0 ? NULL : u + (size_t)(sy1 / 2) * u_stride;
+            const uint8_t *vrow1 = sy < 0 ? NULL : v + (size_t)(sy1 / 2) * v_stride;
             for (int tx = 0; tx < s_tiles_w; tx++) {
                 const size_t base = tile_base(tx, ty);
                 for (int lx = 0; lx < PS5_TILE_WIDTH; lx++) {
@@ -300,9 +335,26 @@ int ps5_video_present_i420(const uint8_t *y, int y_stride,
                     if (sx < 0) {
                         pixel = 0xff000000u;
                     } else {
-                        const int yy = yrow[sx];
-                        const int uu = urow[sx >> 1];
-                        const int vv = vrow[sx >> 1];
+                        int yy, uu, vv;
+                        const int sx1 = s_map_x1[dx];
+                        const int wx = s_map_wx[dx];
+                        if (wx == 0 && wy == 0) {
+                            yy = yrow[sx];
+                            uu = urow[sx >> 1];
+                            vv = vrow[sx >> 1];
+                        } else {
+                            const int iwx = 256 - wx, iwy = 256 - wy;
+                            const int top = yrow[sx] * iwx + yrow[sx1] * wx;
+                            const int bot = yrow1[sx] * iwx + yrow1[sx1] * wx;
+                            yy = (top * iwy + bot * wy) >> 16;
+                            const int cx0 = sx >> 1, cx1 = sx1 >> 1;
+                            const int ut = urow[cx0] * iwx + urow[cx1] * wx;
+                            const int ub = urow1[cx0] * iwx + urow1[cx1] * wx;
+                            const int vt = vrow[cx0] * iwx + vrow[cx1] * wx;
+                            const int vb = vrow1[cx0] * iwx + vrow1[cx1] * wx;
+                            uu = (ut * iwy + ub * wy) >> 16;
+                            vv = (vt * iwy + vb * wy) >> 16;
+                        }
                         const int yt = y_term[yy];
                         const int red = (yt + r_v_term[vv] + 128) >> 8;
                         const int green = (yt + g_u_term[uu] + g_v_term[vv] + 128) >> 8;
@@ -354,9 +406,18 @@ void ps5_video_cleanup(void)
     s_linear_pixels = 0;
     free(s_map_x);
     free(s_map_y);
+    free(s_map_x1);
+    free(s_map_y1);
+    free(s_map_wx);
+    free(s_map_wy);
     s_map_x = NULL;
+    s_map_x1 = NULL;
+    s_map_y1 = NULL;
+    s_map_wx = NULL;
+    s_map_wy = NULL;
     s_map_y = NULL;
     s_map_dst_w = s_map_dst_h = s_map_src_w = s_map_src_h = -1;
     s_flip_pending = 0;
 }
+
 
